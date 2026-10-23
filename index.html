@@ -52,7 +52,7 @@
         h1 { font-size: 32px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; }
         h2 { font-size: 20px; font-weight: 600; line-height: 1.3; }
         .body-text { font-size: 15px; line-height: 1.4; color: var(--text-secondary); }
-        .micro-text { font-size: 12px; font-weight: 500; line-height: 1.2; }
+        .micro-text { font-size: 12px; fontcent-weight: 500; line-height: 1); color:.2; }
 
         /* 8. Адаптивность (Обертка) */
         .app-container {
@@ -151,6 +151,7 @@
             animation: fadeInUp 0.4s ease-out forwards;
             opacity: 0;
             transform: translateY(10px);
+            cursor: pointer;
         }
         @keyframes fadeInUp { to { opacity: 1; transform: translateY(0); } }
         
@@ -280,9 +281,21 @@
             display: flex; justify-content: center; align-items: center;
         }
         .btn:active { transform: scale(0.98); }
-        .btn-primary { background: var(--accent); color: #fff; margin-bottom: 8px; }
+        .btn-primary { background: var(--ac #fff; margin-bottom: 8px; }
         .btn-ghost { background: transparent; color: var(--text-secondary); }
         .btn-delete { color: #d32f2f; background: transparent; display: none; margin-top: 8px;}
+
+        /* Пустое состояние */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-secondary);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+        .empty-state .emoji { font-size: 48px; }
 
         /* 8. Адаптивность для ПК (Desktop) */
         @media (min-width: 768px) {
@@ -299,6 +312,7 @@
                 display: grid;
                 grid-template-columns: repeat(2, 1fr);
                 padding: 0;
+                align-content: start;
             }
             /* На ПК Bottom Sheet превращается в боковую панель */
             .bottom-sheet {
@@ -310,7 +324,7 @@
                 border-radius: var(--radius-card);
                 padding: 24px;
                 box-shadow: var(--shadow);
-                display: none; /* Скрыто по умолчанию */
+                display: none;
             }
             .bottom-sheet.active { display: block; }
             .drag-handle, .btn-close { display: none; }
@@ -334,10 +348,11 @@
                     <button class="btn-fab" id="openSheetBtn">+</button>
                 </div>
             </div>
-            <div class="filters">
-                <button class="filter-btn active">Все</button>
-                <button class="filter-btn">Предстоящие</button>
-                <button class="filter-btn">Прошедшие</button>
+            <div class="filters" id="filtersContainer">
+                <!-- Добавил data-filter для привязки логики -->
+                <button class="filter-btn active" data-filter="all">Все</button>
+                <button class="filter-btn" data-filter="upcoming">Предстоящие</button>
+                <button class="filter-btn" data-filter="past">Прошедшие</button>
             </div>
         </header>
 
@@ -391,46 +406,58 @@
     </div>
 
     <script>
-        // База данных в памяти (для демо)
-        let events = [
-            {
-                id: 1,
-                title: "День рождения Ани",
-                date: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(), // через 4 часа
-                icon: "🎂",
-                desc: "Не забыть купить подарок!",
-                colorClass: "peach"
-            },
-            {
-                id: 2,
-                title: "Поездка на Алтай",
-                date: new Date(new Date().getTime() + (15 * 24 * 60 * 60 * 1000)).toISOString(), // через 15 дней
-                icon: "✈️",
-                desc: "Билеты куплены, мемо: позаботиться о снаряжении.",
-                colorClass: "blue"
-            },
-            {
-                id: 3,
-                title: "Сдача проекта",
-                date: new Date(new Date().getTime() + (28 * 24 * 60 * 60 * 1000)).toISOString(),
-                icon: "💻",
-                desc: "Финальный дедлайн",
-                colorClass: "mint"
-            },
-            {
-                id: 4,
-                title: "Встреча с друзьями",
-                date: new Date(new Date().getTime() - (3 * 24 * 60 * 60 * 1000)).toISOString(), // прошло 3 дня
-                icon: "🍕",
-                desc: "Было отлично посидели",
-                colorClass: "gray"
+        // --- РАБОТА С LOCALSTORAGE ---
+        function loadEvents() {
+            const stored = localStorage.getItem('calendar_events');
+            if (stored) {
+                return JSON.parse(stored);
             }
-        ];
+            return [
+                {
+                    id: 1,
+                    title: "День рождения Ани",
+                    date: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(),
+                    icon: "🎂",
+                    desc: "Не забыть купить подарок!",
+                    colorClass: "peach"
+                },
+                {
+                    id: 2,
+                    title: "Поездка на Алтай",
+                    date: new Date(new Date().getTime() + (15 * 24 * 60 * 60 * 1000)).toISOString(),
+                    icon: "✈️",
+                    desc: "Билеты куплены, мемо: позаботиться о снаряжении.",
+                    colorClass: "blue"
+                },
+                {
+                    id: 3,
+                    title: "Сдача проекта",
+                    date: new Date(new Date().getTime() + (28 * 24 * 60 * 60 * 1000)).toISOString(),
+                    icon: "💻",
+                    desc: "Финальный дедлайн",
+                    colorClass: "mint"
+                },
+                {
+                    id: 4,
+                    title: "Встреча с друзьями",
+                    date: new Date(new Date().getTime() - (3 * 24 * 60 * 60 * 1000)).toISOString(),
+                    icon: "🍕",
+                    desc: "Было отлично посидели",
+                    colorClass: "gray"
+                }
+            ];
+        }
 
+        function saveEvents() {
+            localStorage.setItem('calendar_events', JSON.stringify(events));
+        }
+
+        // Инициализация
+        let events = loadEvents();
+        let currentFilter = 'all'; // Переменная для хранения текущего фильтра
         let editingId = null;
         let selectedIcon = "🎂";
 
-        // DOM Элементы
         const eventsList = document.getElementById('eventsList');
         const overlay = document.getElementById('overlay');
         const editorSheet = document.getElementById('editorSheet');
@@ -442,15 +469,14 @@
         const deleteBtn = document.getElementById('deleteBtn');
         const sheetTitle = document.getElementById('sheetTitle');
         const iconPicker = document.getElementById('iconPicker');
+        const filtersContainer = document.getElementById('filtersContainer');
 
-        // Форматирование времени
         function formatDate(dateStr) {
             const date = new Date(dateStr);
             const options = { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' };
             return date.toLocaleDateString('ru-RU', options);
         }
 
-        // Расчет обратного отсчета
         function getCountdown(dateStr) {
             const now = new Date();
             const eventDate = new Date(dateStr);
@@ -459,28 +485,59 @@
 
             if (diffMs < 0) {
                 const daysPast = Math.floor(Math.abs(diffMs) / (1000 * 60 * 60 * 24));
-                if (daysPast === 0) return { text: "Прошло сегодня", class: "past" };
-                return { text: `Прошло ${daysPast} дн. назад`, class: "past" };
+                if (daysPast === 0) return { text: "Прошло сегодня", class: "past", isPast: true };
+                return { text: `Прошло ${daysPast} дн. назад`, class: "past", isPast: true };
             }
 
             if (diffHours < 24) {
                 const hours = Math.floor(diffHours);
-                return { text: `через ${hours} ч. ⏳`, class: "urgent", isUrgent: true };
+                return { text: `через ${hours} ч. ⏳`, class: "urgent", isUrgent: true, isPast: false };
             } else {
                 const days = Math.floor(diffHours / 24);
-                return { text: `через ${days} дн.`, class: "upcoming" };
+                return { text: `через ${days} дн.`, class: "upcoming", isPast: false };
             }
         }
 
-        // Отрисовка списка
         function renderEvents() {
             eventsList.innerHTML = '';
-            // Сортировка: сначала будущие (по возрастанию), потом прошедшие
+            
+            // 1. Сначала сортируем все события
             events.sort((a, b) => new Date(a.date) - new Date(b.date));
 
-            events.forEach(event => {
+            // 2. Фильтруем события в зависимости от выбранной вкладки
+            let filteredEvents = events;
+            if (currentFilter === 'upcoming') {
+                filteredEvents = events.filter(ev => new Date(ev.date) >= new Date());
+            } else if (currentFilter === 'past') {
+                filteredEvents = events.filter(ev => new Date(ev.date) < new Date());
+            }
+
+            // 3. Обрабатываем пустые состояния
+            if (filteredEvents.length === 0) {
+                let emptyText = "Пока нет событий";
+                let emptyDesc = "Добавьте первое, чтобы начать отсчёт";
+                
+                if (events.length > 0) {
+                    // Если события есть, но они не попадают под фильтр
+                    emptyText = currentFilter === 'upcoming' ? "Нет предстоящих событий" : "Нет прошедших событий";
+                    emptyDesc = currentFilter === 'upcoming' ? "Все запланированные дела выполнены" : "Здесь пока пусто";
+                }
+
+                eventsList.innerHTML = `
+                    <div class="empty-state" style="grid-column: 1 / -1;">
+                        <div class="emoji">${currentFilter === 'upcoming' ? '☀️' : currentFilter === 'past' ? '🗄️' : '📅'}</div>
+                        <h2>${emptyText}</h2>
+                        <p class="body-text">${emptyDesc}</p>
+                        ${events.length === 0 ? `<button class="btn btn-primary" style="width: auto; padding: 12px 24px; margin-top: 10px;" onclick="openEditor()">Добавить событие</button>` : ''}
+                    </div>
+                `;
+                return;
+            }
+
+            // 4. Отрисовываем отфильтрованные события
+            filteredEvents.forEach(event => {
                 const countdown = getCountdown(event.date);
-                const isPast = countdown.class === 'past';
+                const isPast = countdown.isPast;
                 const icon = event.icon || '📅';
 
                 const card = document.createElement('div');
@@ -498,33 +555,45 @@
                     </div>
                 `;
                 
-                // Обработчик клика для редактирования
                 card.addEventListener('click', () => openEditor(event));
-                
                 eventsList.appendChild(card);
             });
         }
 
-        // Открытие/Закрытие Bottom Sheet
+        // --- ЛОГИКА ФИЛЬТРОВ ---
+        filtersContainer.addEventListener('click', (e) => {
+            // Проверяем, что кликнули именно по кнопке фильтра
+            if (e.target.classList.contains('filter-btn')) {
+                // 1. Убираем класс active у всех кнопок
+                document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+                
+                // 2. Добавляем класс active нажатой кнопке
+                e.target.classList.add('active');
+                
+                // 3. Обновляем текущий фильтр и перерисовываем список
+                currentFilter = e.target.dataset.filter;
+                renderEvents();
+            }
+        });
+
         function openEditor(event = null) {
             overlay.classList.add('active');
             editorSheet.classList.add('active');
 
             if (event) {
-                // Режим редактирования
                 editingId = event.id;
                 sheetTitle.textContent = "Редактировать";
                 document.getElementById('inputTitle').value = event.title;
-                // Форматируем дату для input datetime-local
+                
                 const d = new Date(event.date);
                 d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
                 document.getElementById('inputDate').value = d.toISOString().slice(0, 16);
+                
                 document.getElementById('inputDesc').value = event.desc || '';
                 selectedIcon = event.icon;
                 submitBtn.textContent = "Сохранить";
                 deleteBtn.style.display = "flex";
             } else {
-                // Режим создания
                 editingId = null;
                 sheetTitle.textContent = "Новое событие";
                 eventForm.reset();
@@ -540,7 +609,6 @@
             editorSheet.classList.remove('active');
         }
 
-        // Выбор иконки
         function updateIconPicker() {
             document.querySelectorAll('.icon-option').forEach(el => {
                 if (el.dataset.icon === selectedIcon) {
@@ -558,13 +626,11 @@
             }
         });
 
-        // Определение цвета карточки
         function getRandomPastel() {
             const colors = ['mint', 'blue', 'peach'];
             return colors[Math.floor(Math.random() * colors.length)];
         }
 
-        // Сохранение события
         eventForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const title = document.getElementById('inputTitle').value;
@@ -572,11 +638,9 @@
             const desc = document.getElementById('inputDesc').value;
 
             if (editingId) {
-                // Обновление
                 const index = events.findIndex(ev => ev.id === editingId);
                 events[index] = { ...events[index], title, date, desc, icon: selectedIcon };
             } else {
-                // Создание
                 events.push({
                     id: Date.now(),
                     title,
@@ -587,26 +651,26 @@
                 });
             }
 
-            renderEvents();
+            saveEvents();
+            renderEvents(); // Перерисовываем с учетом текущего фильтра
             closeEditor();
         });
 
-        // Удаление события
         deleteBtn.addEventListener('click', () => {
             if (editingId && confirm('Удалить это событие?')) {
                 events = events.filter(ev => ev.id !== editingId);
+                saveEvents();
                 renderEvents();
                 closeEditor();
             }
         });
 
-        // Слушатели событий
         openSheetBtn.addEventListener('click', () => openEditor());
         closeSheetBtn.addEventListener('click', closeEditor);
         cancelBtn.addEventListener('click', closeEditor);
         overlay.addEventListener('click', closeEditor);
 
-        // Инициализация
+        // Первичная отрисовка
         renderEvents();
         
         // Обновление таймеров каждую минуту
