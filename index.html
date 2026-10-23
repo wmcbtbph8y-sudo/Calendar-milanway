@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Календарь событий</title>
+    <style>
+        /* 2. Цветовая палитра и переменные */
+        :root {
+            --bg: #FBF9F4;
+            --surface: #FFFFFF;
+            --text-main: #1C2E24;
+            --text-secondary: #607368;
+            --accent: #0D4F34;
+            --accent-secondary: #4CA1A9;
+            --urgent: #F26430;
+            --muted: #A3B1A8;
+            
+            --bg-mint: #EBF5F0;
+            --bg-blue: #E8F1F5;
+            --bg-peach: #FDF0E6;
+            --bg-gray: #F0F0F0;
+
+            --radius-card: 20px;
+            --radius-sheet: 24px;
+            --shadow: 0 4px 12px rgba(0,0,0,0.05);
+            --transition: 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #121414;
+                --surface: #1C1F1F;
+                --text-main: #E4E9E6;
+                --text-secondary: #9AA9A1;
+                --accent: #2EC4B6;
+                --accent-secondary: #3A86C8;
+                --urgent: #FF8C42;
+                --muted: #4E5752;
+                
+                --bg-mint: #18251F;
+                --bg-blue: #162125;
+                --bg-peach: #261C16;
+                --bg-gray: #242727;
+            }
+        }
+
+        /* 3. Типографика и сброс */
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        body { background-color: var(--bg); color: var(--text-main); -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+        
+        h1 { font-size: 32px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; }
+        h2 { font-size: 20px; font-weight: 600; line-height: 1.3; }
+        .body-text { font-size: 15px; line-height: 1.4; color: var(--text-secondary); }
+        .micro-text { font-size: 12px; font-weight: 500; line-height: 1.2; }
+
+        /* 8. Адаптивность (Обертка) */
+        .app-container {
+            max-width: 480px;
+            margin: 0 auto;
+            min-height: 100vh;
+            position: relative;
+            padding-bottom: 40px;
+        }
+
+        /* Sticky-Шапка */
+        header {
+            position: sticky;
+            top: 0;
+            background: var(--bg);
+            z-index: 10;
+            padding: 16px 20px;
+        }
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .header-actions { display: flex; gap: 12px; align-items: center; }
+        .btn-icon {
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: var(--text-main);
+            width: 48px; height: 48px;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            transition: background 0.2s;
+        }
+        .btn-icon:active { background: var(--bg-gray); }
+        .btn-fab {
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            border-radius: 50%;
+            width: 48px; height: 48px;
+            font-size: 24px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(13, 79, 52, 0.2);
+            transition: transform 0.2s;
+        }
+        .btn-fab:active { transform: scale(0.95); }
+
+        /* Фильтры */
+        .filters {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding-bottom: 8px;
+            scrollbar-width: none;
+        }
+        .filters::-webkit-scrollbar { display: none; }
+        .filter-btn {
+            background: transparent;
+            border: 1px solid var(--text-secondary);
+            color: var(--text-main);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .filter-btn.active {
+            background: var(--accent-secondary);
+            border-color: var(--accent-secondary);
+            color: #fff;
+        }
+
+        /* Лента событий */
+        .events-list {
+            padding: 0 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        /* 6. Карточка события */
+        .event-card {
+            border-radius: var(--radius-card);
+            padding: 16px;
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+            position: relative;
+            transition: var(--transition);
+            animation: fadeInUp 0.4s ease-out forwards;
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        @keyframes fadeInUp { to { opacity: 1; transform: translateY(0); } }
+        
+        .event-card.mint { background: var(--bg-mint); }
+        .event-card.blue { background: var(--bg-blue); }
+        .event-card.peach { background: var(--bg-peach); }
+        .event-card.gray { background: var(--bg-gray); }
+
+        .card-icon {
+            width: 40px; height: 40px;
+            background: var(--surface);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+        .card-content { flex-grow: 1; display: flex; flex-direction: column; gap: 6px; }
+        .card-title { color: var(--text-main); padding-right: 60px; }
+        
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 6px 12px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 600;
+            align-self: flex-start;
+            position: absolute;
+            top: 16px; right: 16px;
+        }
+        .badge.urgent { background: var(--urgent); color: #fff; }
+        .badge.upcoming { background: var(--accent); color: #fff; }
+        .badge.past { background: var(--muted); color: #fff; }
+        
+        .dot { width: 6px; height: 6px; background: #fff; border-radius: 50%; margin-left: 6px; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+
+        /* Прошедшие события */
+        .event-card.past-event .card-title { color: var(--muted); text-decoration: line-through; }
+        .event-card.past-event .card-icon { filter: grayscale(100%); opacity: 0.5; }
+        .event-card.past-event .body-text { color: var(--muted); }
+
+        /* 5. Bottom Sheet & Overlay */
+        .overlay {
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.4);
+            backdrop-filter: blur(4px);
+            z-index: 100;
+            opacity: 0; pointer-events: none;
+            transition: opacity var(--transition);
+        }
+        .overlay.active { opacity: 1; pointer-events: all; }
+
+        .bottom-sheet {
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            max-width: 480px;
+            margin: 0 auto;
+            background: var(--surface);
+            border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
+            padding: 12px 20px 32px;
+            z-index: 101;
+            transform: translateY(100%);
+            transition: transform var(--transition);
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
+        }
+        .bottom-sheet.active { transform: translateY(0); }
+
+        .drag-handle {
+            width: 36px; height: 4px;
+            background: var(--muted);
+            border-radius: 2px;
+            margin: 0 auto 20px;
+            opacity: 0.5;
+        }
+
+        .sheet-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+        .btn-close {
+            background: none; border: none; font-size: 24px;
+            color: var(--text-secondary); cursor: pointer;
+        }
+
+        /* Формы */
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; font-size: 14px; font-weight: 500; color: var(--text-secondary); margin-bottom: 8px; }
+        .form-control {
+            width: 100%;
+            padding: 16px;
+            border-radius: 12px;
+            border: 1px solid var(--bg-gray);
+            background: var(--surface);
+            color: var(--text-main);
+            font-size: 15px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .form-control:focus { border-color: var(--accent); }
+        textarea.form-control { resize: vertical; min-height: 100px; }
+
+        /* Выбор иконки */
+        .icon-picker {
+            display: flex; gap: 12px; overflow-x: auto; padding-bottom: 8px;
+            scrollbar-width: none;
+        }
+        .icon-picker::-webkit-scrollbar { display: none; }
+        .icon-option {
+            font-size: 24px; padding: 8px;
+            border-radius: 12px; cursor: pointer;
+            background: var(--bg-gray); border: 2px solid transparent;
+            transition: all 0.2s;
+        }
+        .icon-option.selected { background: var(--accent-secondary); border-color: var(--accent); transform: scale(1.1); }
+
+        /* Кнопки */
+        .btn {
+            width: 100%; padding: 16px;
+            border-radius: 12px; border: none;
+            font-size: 16px; font-weight: 600;
+            cursor: pointer; transition: all 0.2s;
+            display: flex; justify-content: center; align-items: center;
+        }
+        .btn:active { transform: scale(0.98); }
+        .btn-primary { background: var(--accent); color: #fff; margin-bottom: 8px; }
+        .btn-ghost { background: transparent; color: var(--text-secondary); }
+        .btn-delete { color: #d32f2f; background: transparent; display: none; margin-top: 8px;}
+
+        /* 8. Адаптивность для ПК (Desktop) */
+        @media (min-width: 768px) {
+            .app-container {
+                max-width: 1200px;
+                display: grid;
+                grid-template-columns: 1fr 400px;
+                gap: 32px;
+                padding: 32px;
+            }
+            header { grid-column: 1 / -1; padding: 0 0 24px 0; }
+            .filters { justify-content: flex-start; }
+            .events-list {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                padding: 0;
+            }
+            /* На ПК Bottom Sheet превращается в боковую панель */
+            .bottom-sheet {
+                position: sticky;
+                top: 32px;
+                max-width: 100%;
+                height: calc(100vh - 64px);
+                transform: none;
+                border-radius: var(--radius-card);
+                padding: 24px;
+                box-shadow: var(--shadow);
+                display: none; /* Скрыто по умолчанию */
+            }
+            .bottom-sheet.active { display: block; }
+            .drag-handle, .btn-close { display: none; }
+            .overlay { display: none; }
+            .btn-delete { display: flex; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Overlay для затемнения -->
+    <div class="overlay" id="overlay"></div>
+
+    <div class="app-container">
+        <!-- Шапка -->
+        <header>
+            <div class="header-top">
+                <h1>События</h1>
+                <div class="header-actions">
+                    <button class="btn-icon">🔍</button>
+                    <button class="btn-fab" id="openSheetBtn">+</button>
+                </div>
+            </div>
+            <div class="filters">
+                <button class="filter-btn active">Все</button>
+                <button class="filter-btn">Предстоящие</button>
+                <button class="filter-btn">Прошедшие</button>
+            </div>
+        </header>
+
+        <!-- Лента событий -->
+        <main class="events-list" id="eventsList">
+            <!-- Карточки будут генерироваться через JS -->
+        </main>
+
+        <!-- Bottom Sheet Редактор -->
+        <div class="bottom-sheet" id="editorSheet">
+            <div class="drag-handle"></div>
+            <div class="sheet-header">
+                <h2 id="sheetTitle">Новое событие</h2>
+                <button class="btn-close" id="closeSheetBtn">✕</button>
+            </div>
+
+            <form id="eventForm">
+                <div class="form-group">
+                    <label>Название</label>
+                    <input type="text" class="form-control" placeholder="Например, День рождения" required id="inputTitle">
+                </div>
+
+                <div class="form-group">
+                    <label>Дата и время</label>
+                    <input type="datetime-local" class="form-control" required id="inputDate">
+                </div>
+
+                <div class="form-group">
+                    <label>Иконка</label>
+                    <div class="icon-picker" id="iconPicker">
+                        <div class="icon-option selected" data-icon="🎂">🎂</div>
+                        <div class="icon-option" data-icon="🎉">🎉</div>
+                        <div class="icon-option" data-icon="✈️">✈️</div>
+                        <div class="icon-option" data-icon="💻">💻</div>
+                        <div class="icon-option" data-icon="🍕">🍕</div>
+                        <div class="icon-option" data-icon="🚀">🚀</div>
+                        <div class="icon-option" data-icon="📅">📅</div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Описание</label>
+                    <textarea class="form-control" placeholder="Будет весело, соберутся все..." id="inputDesc"></textarea>
+                </div>
+
+                <button type="submit" class="btn btn-primary" id="submitBtn">Создать</button>
+                <button type="button" class="btn btn-ghost" id="cancelBtn">Отмена</button>
+                <button type="button" class="btn btn-delete" id="deleteBtn">🗑️ Удалить событие</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // База данных в памяти (для демо)
+        let events = [
+            {
+                id: 1,
+                title: "День рождения Ани",
+                date: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(), // через 4 часа
+                icon: "🎂",
+                desc: "Не забыть купить подарок!",
+                colorClass: "peach"
+            },
+            {
+                id: 2,
+                title: "Поездка на Алтай",
+                date: new Date(new Date().getTime() + (15 * 24 * 60 * 60 * 1000)).toISOString(), // через 15 дней
+                icon: "✈️",
+                desc: "Билеты куплены, мемо: позаботиться о снаряжении.",
+                colorClass: "blue"
+            },
+            {
+                id: 3,
+                title: "Сдача проекта",
+                date: new Date(new Date().getTime() + (28 * 24 * 60 * 60 * 1000)).toISOString(),
+                icon: "💻",
+                desc: "Финальный дедлайн",
+                colorClass: "mint"
+            },
+            {
+                id: 4,
+                title: "Встреча с друзьями",
+                date: new Date(new Date().getTime() - (3 * 24 * 60 * 60 * 1000)).toISOString(), // прошло 3 дня
+                icon: "🍕",
+                desc: "Было отлично посидели",
+                colorClass: "gray"
+            }
+        ];
+
+        let editingId = null;
+        let selectedIcon = "🎂";
+
+        // DOM Элементы
+        const eventsList = document.getElementById('eventsList');
+        const overlay = document.getElementById('overlay');
+        const editorSheet = document.getElementById('editorSheet');
+        const openSheetBtn = document.getElementById('openSheetBtn');
+        const closeSheetBtn = document.getElementById('closeSheetBtn');
+        const cancelBtn = document.getElementById('cancelBtn');
+        const eventForm = document.getElementById('eventForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const deleteBtn = document.getElementById('deleteBtn');
+        const sheetTitle = document.getElementById('sheetTitle');
+        const iconPicker = document.getElementById('iconPicker');
+
+        // Форматирование времени
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            const options = { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' };
+            return date.toLocaleDateString('ru-RU', options);
+        }
+
+        // Расчет обратного отсчета
+        function getCountdown(dateStr) {
+            const now = new Date();
+            const eventDate = new Date(dateStr);
+            const diffMs = eventDate - now;
+            const diffHours = diffMs / (1000 * 60 * 60);
+
+            if (diffMs < 0) {
+                const daysPast = Math.floor(Math.abs(diffMs) / (1000 * 60 * 60 * 24));
+                if (daysPast === 0) return { text: "Прошло сегодня", class: "past" };
+                return { text: `Прошло ${daysPast} дн. назад`, class: "past" };
+            }
+
+            if (diffHours < 24) {
+                const hours = Math.floor(diffHours);
+                return { text: `через ${hours} ч. ⏳`, class: "urgent", isUrgent: true };
+            } else {
+                const days = Math.floor(diffHours / 24);
+                return { text: `через ${days} дн.`, class: "upcoming" };
+            }
+        }
+
+        // Отрисовка списка
+        function renderEvents() {
+            eventsList.innerHTML = '';
+            // Сортировка: сначала будущие (по возрастанию), потом прошедшие
+            events.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            events.forEach(event => {
+                const countdown = getCountdown(event.date);
+                const isPast = countdown.class === 'past';
+                const icon = event.icon || '📅';
+
+                const card = document.createElement('div');
+                card.className = `event-card ${event.colorClass} ${isPast ? 'past-event' : ''}`;
+                card.innerHTML = `
+                    <div class="card-icon">${icon}</div>
+                    <div class="card-content">
+                        <h2 class="card-title">${event.title}</h2>
+                        <span class="body-text">${formatDate(event.date)}</span>
+                        ${event.desc ? `<p class="body-text" style="font-size: 13px;">${event.desc}</p>` : ''}
+                        <div class="badge ${countdown.class}">
+                            ${countdown.text}
+                            ${countdown.isUrgent ? '<span class="dot"></span>' : ''}
+                        </div>
+                    </div>
+                `;
+                
+                // Обработчик клика для редактирования
+                card.addEventListener('click', () => openEditor(event));
+                
+                eventsList.appendChild(card);
+            });
+        }
+
+        // Открытие/Закрытие Bottom Sheet
+        function openEditor(event = null) {
+            overlay.classList.add('active');
+            editorSheet.classList.add('active');
+
+            if (event) {
+                // Режим редактирования
+                editingId = event.id;
+                sheetTitle.textContent = "Редактировать";
+                document.getElementById('inputTitle').value = event.title;
+                // Форматируем дату для input datetime-local
+                const d = new Date(event.date);
+                d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+                document.getElementById('inputDate').value = d.toISOString().slice(0, 16);
+                document.getElementById('inputDesc').value = event.desc || '';
+                selectedIcon = event.icon;
+                submitBtn.textContent = "Сохранить";
+                deleteBtn.style.display = "flex";
+            } else {
+                // Режим создания
+                editingId = null;
+                sheetTitle.textContent = "Новое событие";
+                eventForm.reset();
+                selectedIcon = "🎂";
+                submitBtn.textContent = "Создать";
+                deleteBtn.style.display = "none";
+            }
+            updateIconPicker();
+        }
+
+        function closeEditor() {
+            overlay.classList.remove('active');
+            editorSheet.classList.remove('active');
+        }
+
+        // Выбор иконки
+        function updateIconPicker() {
+            document.querySelectorAll('.icon-option').forEach(el => {
+                if (el.dataset.icon === selectedIcon) {
+                    el.classList.add('selected');
+                } else {
+                    el.classList.remove('selected');
+                }
+            });
+        }
+
+        iconPicker.addEventListener('click', (e) => {
+            if (e.target.classList.contains('icon-option')) {
+                selectedIcon = e.target.dataset.icon;
+                updateIconPicker();
+            }
+        });
+
+        // Определение цвета карточки
+        function getRandomPastel() {
+            const colors = ['mint', 'blue', 'peach'];
+            return colors[Math.floor(Math.random() * colors.length)];
+        }
+
+        // Сохранение события
+        eventForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const title = document.getElementById('inputTitle').value;
+            const date = document.getElementById('inputDate').value;
+            const desc = document.getElementById('inputDesc').value;
+
+            if (editingId) {
+                // Обновление
+                const index = events.findIndex(ev => ev.id === editingId);
+                events[index] = { ...events[index], title, date, desc, icon: selectedIcon };
+            } else {
+                // Создание
+                events.push({
+                    id: Date.now(),
+                    title,
+                    date,
+                    desc,
+                    icon: selectedIcon,
+                    colorClass: getRandomPastel()
+                });
+            }
+
+            renderEvents();
+            closeEditor();
+        });
+
+        // Удаление события
+        deleteBtn.addEventListener('click', () => {
+            if (editingId && confirm('Удалить это событие?')) {
+                events = events.filter(ev => ev.id !== editingId);
+                renderEvents();
+                closeEditor();
+            }
+        });
+
+        // Слушатели событий
+        openSheetBtn.addEventListener('click', () => openEditor());
+        closeSheetBtn.addEventListener('click', closeEditor);
+        cancelBtn.addEventListener('click', closeEditor);
+        overlay.addEventListener('click', closeEditor);
+
+        // Инициализация
+        renderEvents();
+        
+        // Обновление таймеров каждую минуту
+        setInterval(renderEvents, 60000);
+    </script>
+</body>
+</html>
